@@ -8,3 +8,6 @@ src/
 *.jpg
 *.png
 *.gif
+
+# MacOS folder file
+.DS_Store

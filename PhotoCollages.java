@@ -14,8 +14,10 @@ import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.FileImageInputStream;
 
 class PhotoCollages {
-	public static int minWdithAndHeight = 240;
+	public static int marginBorderSize = 50;
 	public static int borderSize = 5;
+	public static int gridSize = 250;
+	public static int minWdithAndHeight = gridSize-(borderSize*2);
 	
     public static void main(String[] args) {
         System.out.println("Hello, World!"); 
@@ -78,8 +80,6 @@ class PhotoPicker {
 	}
 	
 	public BufferedImage selectPhotoImage(int inWidth, int inHeight) {
-		System.out.println("Going to select an image with dimension "+inWidth+"x"+inHeight);
-		
 		// select photos meeting the dimension requirement
 		
 		suitablePhotos = new ArrayList<PhotoGrid>();
@@ -101,12 +101,12 @@ class PhotoPicker {
 		if(suitableNewPhotos.size() > 0) {
 			// when there are still new photos
 			rndNum = randNumGenerator.nextInt(suitableNewPhotos.size());
-			System.out.println("Selected image: " + suitableNewPhotos.get(rndNum).inputFilename);
+			System.out.println("\tSelected image: " + suitableNewPhotos.get(rndNum).inputFilename);
 			return suitableNewPhotos.get(rndNum).getBufferedImage(inWidth, inHeight);
 		} else {
 			// when all photos are selected
 			rndNum = randNumGenerator.nextInt(suitablePhotos.size());
-			System.out.println("Selected image: " + suitablePhotos.get(rndNum).inputFilename);
+			System.out.println("\tSelected image: " + suitablePhotos.get(rndNum).inputFilename);
 			return suitablePhotos.get(rndNum).getBufferedImage(inWidth, inHeight);
 		}
 	}
@@ -176,9 +176,6 @@ class PhotoGrid {
 		float widthMagnification = ((float)dstWidth / (float)width);
 		int heightAfterScale = Math.round(height * widthMagnification);
 		
-		System.out.println("Magnification: "+widthMagnification);
-		System.out.println("estimated height after scale: "+heightAfterScale);
-		
 		if(heightAfterScale >= dstHeight) {
 			scaledImage = convertToBufferedImage(originalImage.getScaledInstance(dstWidth, -1, Image.SCALE_AREA_AVERAGING));
 			cropPosY = (scaledImage.getHeight()-dstHeight)/2;
@@ -187,10 +184,8 @@ class PhotoGrid {
 			cropPosX = (scaledImage.getWidth()-dstWidth)/2;
 		}
 		
-		System.out.println("cropPosX: "+cropPosX);
-		System.out.println("cropPosY: "+cropPosY);
-		System.out.println("scaledImage width: "+scaledImage.getWidth());
-		System.out.println("scaledImage height: "+scaledImage.getHeight());
+		System.out.println("\tscaledImage width: "+scaledImage.getWidth());
+		System.out.println("\tscaledImage height: "+scaledImage.getHeight());
 		
 		return scaledImage.getSubimage(cropPosX, cropPosY, dstWidth, dstHeight);
 	}
@@ -269,9 +264,6 @@ class PositionAndDimension {
 		posY = inIndexI *  (inMinWdithAndHeight + inVerticalGap);
 		width = inBlockSize*inMinWdithAndHeight + inHorizontalGap*(inBlockSize-1);
 		height = inBlockSize*inMinWdithAndHeight + inVerticalGap*(inBlockSize-1);
-
-		System.out.println("[PositionAndDimension] width: " + width);
-		System.out.println("[PositionAndDimension] height: " + height);
 	}
 }
 
@@ -322,12 +314,13 @@ class GridMap {
 		for(int i = 0; i < map.length; i++) {
 			for(int j = 0; j < map[i].length; j++) {
 				if(map[i][j] == 0) { // this grid is not occupied
-					//System.out.println("Arrive at grid: "+i+", "+j+"]");
+					System.out.println("Travel at grid ("+i+", "+j+")");
 
 					do {
 						tempBlockSize = getRandomSizeBlock();
 					} while (hasInsufficientSpace(i, j, tempBlockSize));
 					
+					System.out.println("\tBingo!");
 					allocateBlock(i, j, tempBlockSize, photoCount);
 					photoCount += 1;
 					
@@ -387,14 +380,14 @@ class GridMap {
 
 	public int getRandomSizeBlock() {
 		int rndNum = randNumGenerator.nextInt(largestGridSize)+1;
-		System.out.println("Random block size: " + rndNum);
+		System.out.println("\tTry random block size: " + rndNum);
 		return rndNum;
 	}
 
 	public void calculateGridPosXAndPosY() {
 		System.out.println("====================================================================");
 		
-		int usableWidth = width-(borderSize*2);
+		int usableWidth = width-(PhotoCollages.marginBorderSize*2);
 		photoNumPerRow = usableWidth/minWdithAndHeight;
 		int sumofHorizontalGap = usableWidth%minWdithAndHeight;
 		horizontalGap = sumofHorizontalGap / (photoNumPerRow - 1);
@@ -402,7 +395,7 @@ class GridMap {
 		gridPosXArray = new int[photoNumPerRow];
 		
 		for(int i = 0; i < photoNumPerRow; i++) {
-			gridPosXArray[i] = borderSize + (i * (minWdithAndHeight+horizontalGap));
+			gridPosXArray[i] = PhotoCollages.marginBorderSize + (i * (minWdithAndHeight+horizontalGap));
 		}
 		
 		System.out.println("usableWidth: " + usableWidth);
@@ -410,7 +403,7 @@ class GridMap {
 		System.out.println("sumofHorizontalGap: " + sumofHorizontalGap);
 		System.out.println("Horizontal gap is " + horizontalGap);
 		
-		int usableHeight = height-(borderSize*2);
+		int usableHeight = height-(PhotoCollages.marginBorderSize*2);
 		photoNumPerColumn = usableHeight/minWdithAndHeight;
 		int sumofVerticalGap = usableHeight%minWdithAndHeight;
 		verticalGap = sumofVerticalGap / (photoNumPerColumn - 1);
@@ -418,7 +411,7 @@ class GridMap {
 		gridPosYArray = new int[photoNumPerColumn];
 		
 		for(int j = 0; j < photoNumPerColumn; j++) {
-			gridPosYArray[j] = borderSize + (j * (minWdithAndHeight+verticalGap));
+			gridPosYArray[j] = PhotoCollages.marginBorderSize + (j * (minWdithAndHeight+verticalGap));
 		}
 		
 		System.out.println("usableHeight: " + usableHeight);
@@ -520,7 +513,7 @@ class Wallpaper {
 		//g2d.fillRect(posX+borderSize, posY+borderSize, minWdithAndHeight-(borderSize*2), minWdithAndHeight-(borderSize*2));
 		
 		g = outputImage.getGraphics();
-		g.drawImage(bi, posAndDim.posX+borderSize, posAndDim.posY+borderSize, null);
+		g.drawImage(bi, posAndDim.posX+PhotoCollages.marginBorderSize, posAndDim.posY+PhotoCollages.marginBorderSize, null);
 		g.dispose();
 	}
 	
@@ -537,11 +530,12 @@ class Wallpaper {
 		PositionAndDimension tempPosAndDim;
 		
 		for(int i=0; i < gridMap.posAndDim.size(); i++) {
-			//w.drawPhotoGrid(map.posAndDim.get(i));
 			tempPosAndDim = gridMap.posAndDim.get(i);
 			
-			drawPhoto(gridMap.posAndDim.get(i), picker.selectPhotoImage(tempPosAndDim.width, tempPosAndDim.height));
-			//w.drawPhoto(selectPhoto(photoGridArrayList), w.gridPosXArray[i], w.gridPosYArray[j]);
+			System.out.println("At ("+gridMap.posAndDim.get(i).posX + "," +gridMap.posAndDim.get(i).posY + "),"+
+							"draw an image with dimension "+tempPosAndDim.width+"x"+tempPosAndDim.height);
+
+			drawPhoto(tempPosAndDim, picker.selectPhotoImage(tempPosAndDim.width, tempPosAndDim.height));
 		}
 		
 		save();
