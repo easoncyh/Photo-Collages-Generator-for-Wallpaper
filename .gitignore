@@ -3,3 +3,8 @@
 
 # directory containing the photos
 src/
+
+# image files
+*.jpg
+*.png
+*.gif
