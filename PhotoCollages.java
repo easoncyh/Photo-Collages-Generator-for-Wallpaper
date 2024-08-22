@@ -13,6 +13,8 @@ import java.util.Iterator;
 import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
 import javax.imageio.stream.FileImageInputStream;
+import java.nio.file.*;
+import java.util.List;
 
 class PhotoCollages {
 	public static int marginBorderSize = 50;
@@ -59,6 +61,14 @@ class PhotoPicker {
 	public void readSourcePhotos() {
 		File[] fileList = new File(folderPath).listFiles();
 		
+		/*
+		try {
+			List<Path> files = listFiles(Paths.get(folderPath));
+		} catch (IOException e) {
+			System.out.println("Error reading: " + e);
+		}
+ 		*/
+		
 		System.out.println("fileList: ");
 		PhotoGrid tempPhotoGrid;
 		
@@ -76,6 +86,22 @@ class PhotoPicker {
 		}
 	}
 	
+	public List<Path> listFiles(Path path) throws IOException {
+		List<Path> files;
+
+		try (Stream<Path> walk = Files.walk(path)) {
+			files = walk.filter(Files::isRegularFile).filter(p -> isImageFile(p.toFile()))
+					.collect(Collectors.toList());
+		}
+
+		for(int i=0; i < files.size(); i++) {
+			System.out.println(files.get(i));
+		}
+
+		return files;
+	}
+
+
 	public boolean isImageFile(File f) {
 		return f.isFile() && (f.getName().toLowerCase().endsWith(".jpg"));
 	}
@@ -159,6 +185,105 @@ class PhotoGrid {
 			return bimage;
 	}
 	
+	/*
+	public BufferedImage cropAndResizeImage(int dstWidth, int dstHeight) {
+		// The size of one photo grid is PhotoCollages.minWdithAndHeight.  
+		// The actual image size of one photo grid is:
+		//     PhotoCollages.minWdithAndHeight - PhotoCollages.borderSize*2
+		// For the position of the image is:
+		//     posX = pos-x of the photoGrid+PhotoCollages.borderSize
+		//     posY = pos-y of the photoGrid+PhotoCollages.borderSize
+		
+		// resize to fit the short
+		BufferedImage scaledImage;
+		int cropPosX = 0;
+		int cropPosY = 0;
+		
+		float widthMagnification = ((float)width / (float)dstWidth);
+		float heightMagnification = ((float)height / (float)dstHeight);
+		int estHeightAfterCropping = Math.round(dstHeight * widthMagnification);
+		int estWidthAfterCropping = Math.round(dstWidth * heightMagnification);
+		int widthAfterCropping, heightAfterCropping;
+
+		System.out.println("width: " + width);
+		System.out.println("height: " + height);
+		System.out.println("estWidthAfterCropping: " + estWidthAfterCropping);
+		System.out.println("estHeightAfterCropping: " + estHeightAfterCropping);
+
+		if(height >= estHeightAfterCropping) {
+			widthAfterCropping = width;
+			heightAfterCropping = estHeightAfterCropping;
+			cropPosY = (height-estHeightAfterCropping)/2;
+		} else {
+			widthAfterCropping = estWidthAfterCropping;
+			heightAfterCropping = height;
+			cropPosX = (width-estWidthAfterCropping)/2;
+		}
+
+		System.out.println("widthAfterCropping: " + widthAfterCropping);
+		System.out.println("heightAfterCropping: " + heightAfterCropping);
+		System.out.println("cropPosX: " + cropPosX);
+		System.out.println("cropPosY: " + cropPosY);
+
+		BufferedImage croppedImage = originalImage.getSubimage(cropPosX, cropPosY, widthAfterCropping, heightAfterCropping);
+		BufferedImage resizedImage = new BufferedImage(dstWidth, dstHeight, BufferedImage.TYPE_INT_RGB);
+
+		Graphics2D graphics2D = resizedImage.createGraphics();
+		graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		graphics2D.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+		graphics2D.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+		graphics2D.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_SPEED);
+
+		graphics2D.drawImage(croppedImage, 0, 0, dstWidth, dstHeight, null);
+		graphics2D.dispose();
+		return resizedImage;
+	}
+	 */
+
+	/* 
+	//TODO: incorrect aspect ratio
+	 public BufferedImage cropAndResizeImage(int dstWidth, int dstHeight) {
+		// The size of one photo grid is PhotoCollages.minWdithAndHeight.  
+		// The actual image size of one photo grid is:
+		//     PhotoCollages.minWdithAndHeight - PhotoCollages.borderSize*2
+		// For the position of the image is:
+		//     posX = pos-x of the photoGrid+PhotoCollages.borderSize
+		//     posY = pos-y of the photoGrid+PhotoCollages.borderSize
+		
+		
+		int cropPosX = 0;
+		int cropPosY = 0;
+		float widthMagnification = ((float)dstWidth / (float)width);
+		float heightMagnification = ((float)dstHeight / (float)height);
+		int estHeightAfterScaling = Math.round(height * widthMagnification);
+		int estWidthAfterScaling = Math.round(width * heightMagnification);
+		int widthAfterScaling, heightAfterScaling;
+
+		if(estHeightAfterScaling >= dstHeight) {
+			widthAfterScaling = dstWidth;
+			heightAfterScaling = estHeightAfterScaling;
+			cropPosY = (estHeightAfterScaling-dstHeight)/2;
+		} else {
+			widthAfterScaling = estWidthAfterScaling;
+			heightAfterScaling = height;
+			cropPosX = (estWidthAfterScaling-dstWidth)/2;
+		}
+
+		//BufferedImage croppedImage = originalImage.getSubimage(cropPosX, cropPosY, widthAfterCropping, heightAfterCropping);
+		BufferedImage resizedImage = new BufferedImage(widthAfterScaling, heightAfterScaling, BufferedImage.TYPE_INT_RGB);
+
+		Graphics2D graphics2D = resizedImage.createGraphics();
+		//graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		//graphics2D.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+		//graphics2D.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+		//graphics2D.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_SPEED);
+		graphics2D.drawImage(originalImage, 0, 0, widthAfterScaling, heightAfterScaling, null);
+		graphics2D.dispose();
+
+		return resizedImage.getSubimage(cropPosX, cropPosY, dstWidth, dstHeight);
+	}
+	*/
+
 	public BufferedImage scaleAndCropImage(int dstWidth, int dstHeight) {
 		// The size of one photo grid is 250px.  
 		// It is the same value as PhotoCollages.minWdithAndHeight.
