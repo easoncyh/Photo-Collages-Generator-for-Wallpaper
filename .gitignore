@@ -1,0 +1,5 @@
+# compiled class file
+*.class
+
+# directory containing the photos
+src/
