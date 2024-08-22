@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import java.util.Date;
 import java.util.Iterator;
 import javax.imageio.stream.ImageInputStream;
+import javax.imageio.stream.ImageOutputStream;
 import javax.imageio.stream.FileImageInputStream;
 
 class PhotoCollages {
@@ -454,47 +455,7 @@ class Wallpaper {
 		g2d.setPaint (new Color (0, 0, 0));
 		g2d.fillRect (0, 0, width, height);
 		g2d.dispose();
-		
-		//calculateGridPosXAndPosY();
 	}
-	
-	/*
-	public void calculateGridPosXAndPosY() {
-		System.out.println("====================================================================");
-		
-		int usableWidth = width-(borderSize*2);
-		int photoNumPerRow = usableWidth/minWdithAndHeight;
-		int sumofHorizontalGap = usableWidth%minWdithAndHeight;
-		int horizontalGap = sumofHorizontalGap / (photoNumPerRow - 1);
-		
-		gridPosXArray = new int[photoNumPerRow];
-		
-		for(int i = 0; i < photoNumPerRow; i++) {
-			gridPosXArray[i] = borderSize + (i * (minWdithAndHeight+horizontalGap));
-		}
-		
-		System.out.println("usableWidth: " + usableWidth);
-		System.out.println("photoNumPerRow: " + photoNumPerRow);
-		System.out.println("sumofHorizontalGap: " + sumofHorizontalGap);
-		System.out.println("Horizontal gap is " + horizontalGap);
-		
-		int usableHeight = height-(borderSize*2);
-		int photoNumPerColumn = usableHeight/minWdithAndHeight;
-		int sumofVerticalGap = usableHeight%minWdithAndHeight;
-		int verticalGap = sumofVerticalGap / (photoNumPerColumn - 1);
-		
-		gridPosYArray = new int[photoNumPerColumn];
-		
-		for(int j = 0; j < photoNumPerColumn; j++) {
-			gridPosYArray[j] = borderSize + (j * (minWdithAndHeight+verticalGap));
-		}
-		
-		System.out.println("usableHeight: " + usableHeight);
-		System.out.println("photoNumPerColumn: " + photoNumPerColumn);
-		System.out.println("sumofVerticalGap: " + sumofVerticalGap);
-		System.out.println("Vertical gap is " + verticalGap);
-	}
-	*/
 	
 	public void drawPhotoGrid(PositionAndDimension posAndDim) {
 		g2d = outputImage.createGraphics();
@@ -507,11 +468,6 @@ class Wallpaper {
 	}
 	
 	public void drawPhoto(PositionAndDimension posAndDim, BufferedImage bi) {
-		//g2d.setPaint(new Color (0, 0, 0));
-		// one grid is 350px x 350px with a border of 25px
-		// Therefore, the actual image size in the grip is 300px x 300px
-		//g2d.fillRect(posX+borderSize, posY+borderSize, minWdithAndHeight-(borderSize*2), minWdithAndHeight-(borderSize*2));
-		
 		g = outputImage.getGraphics();
 		g.drawImage(bi, posAndDim.posX+PhotoCollages.marginBorderSize, posAndDim.posY+PhotoCollages.marginBorderSize, null);
 		g.dispose();
@@ -521,7 +477,16 @@ class Wallpaper {
 		File outputFile = new File(outputFilename+".jpg");
 		
 		try {
-           ImageIO.write(outputImage, "jpg", outputFile);
+           //ImageIO.write(outputImage, "jpg", outputFile);
+			ImageOutputStream outStream =  ImageIO.createImageOutputStream(outputFile);
+			Iterator<ImageWriter> iter = ImageIO.getImageWritersByFormatName("jpeg");
+			ImageWriter writer = iter.next();
+			ImageWriteParam writeParam = writer.getDefaultWriteParam();
+			writeParam.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+			writeParam.setCompressionQuality(0.9f);
+			writer.setOutput(outStream);
+			writer.write(null, new IIOImage(outputImage,null,null),writeParam);
+			writer.dispose();
 		} catch (IOException e) {
 		}
 	}
