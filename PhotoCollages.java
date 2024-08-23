@@ -13,13 +13,15 @@ import java.util.Iterator;
 import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
 import javax.imageio.stream.FileImageInputStream;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 class PhotoCollages {
 	public static int marginBorderSize = 50;
 	public static int borderSize = 5;
-	public static int gridSize = 250;
+	public static int gridSize = 200;
 	public static int minWdithAndHeight = gridSize-(borderSize*2);
 	
     public static void main(String[] args) {
@@ -28,8 +30,8 @@ class PhotoCollages {
 		long timestamp = (new Date()).getTime();
 		long startTime = System.currentTimeMillis();
 		
-		int wallpaperWidth = 1920;
-		int wallpaperHeight = 1080;
+		int wallpaperWidth = 3840;
+		int wallpaperHeight = 2160;
 		String wallpaperFileName = "output_"+wallpaperWidth+"x"+wallpaperHeight+"_"+timestamp;
 		
 		Wallpaper w = new Wallpaper(wallpaperFileName, wallpaperWidth, wallpaperHeight);
@@ -54,50 +56,54 @@ class PhotoPicker {
 	public PhotoPicker(String inFolderPath) {
 		folderPath = inFolderPath;
 		photoGridArrayList = new ArrayList<PhotoGrid>();
-		randNumGenerator = new Random();
+		randNumGenerator = new Random(System.currentTimeMillis());
 		readSourcePhotos();
 	}
 	
 	public void readSourcePhotos() {
-		File[] fileList = new File(folderPath).listFiles();
+		List<Path> imageFilePaths = null;
 		
-		/*
 		try {
-			List<Path> files = listFiles(Paths.get(folderPath));
+			imageFilePaths = listAllFilesInDir(Paths.get(folderPath));
 		} catch (IOException e) {
 			System.out.println("Error reading: " + e);
 		}
- 		*/
+ 		
+		if(imageFilePaths.size() > 0) {
+			System.out.println("Total no. of image files found: " + imageFilePaths.size());
+			
+			imageFilePaths.forEach(p -> {
+				System.out.println("\t"+p.getFileName());
+			});
+		} else {
+			System.out.println("No image file found in the directory: " + imageFilePaths.size());
+		}
 		
 		System.out.println("fileList: ");
 		PhotoGrid tempPhotoGrid;
 		
-		for(int i = 0; i < fileList.length; i++) {
-			if(isImageFile(fileList[i])) {
-				tempPhotoGrid = new PhotoGrid(fileList[i].getPath());
+		for(int i = 0; i < imageFilePaths.size(); i++) {
+			if(isImageFile(imageFilePaths.get(i).toFile())) {
+				tempPhotoGrid = new PhotoGrid(imageFilePaths.get(i).toString());
 				
 				if(tempPhotoGrid.isLargerThanMinimumDimension()) {
-					System.out.println("\t+++Selected: " + fileList[i].getName());
+					System.out.println("\t+++Selected: " + imageFilePaths.get(i).getFileName());
 					photoGridArrayList.add(tempPhotoGrid);
 				} else {
-					System.out.println("\t---Rejected: " + fileList[i].getName());
+					System.out.println("\t---Rejected: " + imageFilePaths.get(i).getFileName());
 				}
 			}
 		}
 	}
 	
-	public List<Path> listFiles(Path path) throws IOException {
+	public List<Path> listAllFilesInDir(Path path) throws IOException {
 		List<Path> files;
 
 		try (Stream<Path> walk = Files.walk(path)) {
 			files = walk.filter(Files::isRegularFile).filter(p -> isImageFile(p.toFile()))
 					.collect(Collectors.toList());
 		}
-
-		for(int i=0; i < files.size(); i++) {
-			System.out.println(files.get(i));
-		}
-
+		
 		return files;
 	}
 
@@ -310,8 +316,8 @@ class PhotoGrid {
 			cropPosX = (scaledImage.getWidth()-dstWidth)/2;
 		}
 		
-		System.out.println("\tscaledImage width: "+scaledImage.getWidth());
-		System.out.println("\tscaledImage height: "+scaledImage.getHeight());
+		//System.out.println("\tscaledImage width: "+scaledImage.getWidth());
+		//System.out.println("\tscaledImage height: "+scaledImage.getHeight());
 		
 		return scaledImage.getSubimage(cropPosX, cropPosY, dstWidth, dstHeight);
 	}
@@ -546,14 +552,23 @@ class GridMap {
 		System.out.println("Vertical gap is " + verticalGap);
 
 		if(photoNumPerRow <= photoNumPerColumn) {
-			largestGridSize = photoNumPerRow - 1;
+			if(photoNumPerRow <= 3) {
+				largestGridSize = 2;
+			} else {
+				largestGridSize = photoNumPerRow/2;
+			}
 		} else {
-			largestGridSize = photoNumPerColumn - 1;
+			if(photoNumPerColumn <= 3) {
+				largestGridSize = 2;
+			} else {
+				largestGridSize = photoNumPerColumn/2;
+			}
 		}
 	}
 }
 
 class Wallpaper {
+	public String outputPath;
 	public String outputFilename;
 	public BufferedImage outputImage = null;
 	public int width, height;
@@ -561,8 +576,6 @@ class Wallpaper {
 	public Graphics2D g2d;
 	public int minWdithAndHeight;
 	public int borderSize;
-	//public int[] gridPosXArray;
-	//public int[] gridPosYArray;
 	public GridMap gridMap;
 
 	public Wallpaper(String inFilename, int inWidth, int inHeight) {
@@ -580,6 +593,10 @@ class Wallpaper {
 		g2d.setPaint (new Color (0, 0, 0));
 		g2d.fillRect (0, 0, width, height);
 		g2d.dispose();
+		
+		// create output folder
+		outputPath = "./output/";
+		new File(outputPath).mkdirs();
 	}
 	
 	public void drawPhotoGrid(PositionAndDimension posAndDim) {
@@ -599,7 +616,7 @@ class Wallpaper {
 	}
 	
 	public void save() {
-		File outputFile = new File(outputFilename+".jpg");
+		File outputFile = new File(outputPath+outputFilename+".jpg");
 		
 		try {
            //ImageIO.write(outputImage, "jpg", outputFile);
@@ -622,7 +639,7 @@ class Wallpaper {
 		for(int i=0; i < gridMap.posAndDim.size(); i++) {
 			tempPosAndDim = gridMap.posAndDim.get(i);
 			
-			System.out.println("At ("+gridMap.posAndDim.get(i).posX + "," +gridMap.posAndDim.get(i).posY + "),"+
+			System.out.println("At ("+gridMap.posAndDim.get(i).posX + "," +gridMap.posAndDim.get(i).posY + "), "+
 							"draw an image with dimension "+tempPosAndDim.width+"x"+tempPosAndDim.height);
 
 			drawPhoto(tempPosAndDim, picker.selectPhotoImage(tempPosAndDim.width, tempPosAndDim.height));
