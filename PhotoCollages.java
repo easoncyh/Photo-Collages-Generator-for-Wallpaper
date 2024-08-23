@@ -1,14 +1,11 @@
 import java.awt.*;
-import java.awt.event.*;
 import java.awt.image.*;
 import java.io.*;
 import javax.imageio.*;
-import javax.swing.*;
 import java.util.Random;
 import java.util.ArrayList;
 import java.util.stream.Stream;
 import java.util.stream.Collectors;
-import java.util.Date;
 import java.util.Iterator;
 import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
@@ -19,31 +16,58 @@ import java.nio.file.Paths;
 import java.util.List;
 
 class PhotoCollages {
+	public static int wallpaperWidth = 1920;
+	public static int wallpaperHeight = 1080;
 	public static int marginBorderSize = 50;
-	public static int borderSize = 5;
 	public static int gridSize = 200;
+	public static int borderSize = 20;
 	public static int minWdithAndHeight = gridSize-(borderSize*2);
 	
     public static void main(String[] args) {
-        System.out.println("Hello, World!"); 
+        System.out.println("Hello, World!");
+
+		gridSize = getOptimalGridSize();
+		minWdithAndHeight = gridSize-(borderSize*2);
 		
-		long timestamp = (new Date()).getTime();
 		long startTime = System.currentTimeMillis();
-		
-		int wallpaperWidth = 3840;
-		int wallpaperHeight = 2160;
-		String wallpaperFileName = "output_"+wallpaperWidth+"x"+wallpaperHeight+"_"+timestamp;
-		
-		Wallpaper w = new Wallpaper(wallpaperFileName, wallpaperWidth, wallpaperHeight);
+		String wallpaperFileName = "output_"+wallpaperWidth+"x"+wallpaperHeight+"_"+startTime;
 		PhotoPicker picker = new PhotoPicker("src");
-		
+		Wallpaper w = new Wallpaper(wallpaperFileName, wallpaperWidth, wallpaperHeight);
 		w.drawAndSaveAllPhotos(picker);
-		
 		w.save();
 		
 		long durationInSeconds = (System.currentTimeMillis()-startTime)/1000;
 		System.out.println("Completed generating the wallpaper in " + durationInSeconds + " seconds.");
     }
+
+	public static int getOptimalGridSize() {
+		int maxGridSize = wallpaperHeight > wallpaperWidth ? wallpaperWidth/2 : wallpaperHeight/2;
+		int minSumofHorizontalGapAndVerticalGap = wallpaperWidth > wallpaperHeight ? wallpaperWidth : wallpaperHeight;
+		int initGridSize = 200;
+		int optimalGridSize = initGridSize;
+
+		int usableWidth = wallpaperWidth-(marginBorderSize*2);
+		int usableHeight = wallpaperHeight-(marginBorderSize*2);
+		int gapSum;
+		int gapMin = 5;
+
+		System.out.println("initGridSize: " + initGridSize);
+		System.out.println("maxGridSize: " + maxGridSize);
+
+		for(int i=initGridSize; i<maxGridSize; i++) {
+			if(((usableWidth/i) >= 4) && ((usableHeight/i) >=4)) {
+				gapSum = usableWidth%i + usableHeight%i;
+				if(gapSum >= gapMin*2 && gapSum < minSumofHorizontalGapAndVerticalGap) {
+					minSumofHorizontalGapAndVerticalGap = gapSum;
+					optimalGridSize = i;
+					System.out.println("\tFound better grid size: " + i + " with gap sum of " + gapSum);
+				}
+			}
+		}
+		System.out.println("Final gridSize: " + optimalGridSize);
+
+		return optimalGridSize;
+	}
 }
 
 class PhotoPicker {
@@ -72,9 +96,11 @@ class PhotoPicker {
 		if(imageFilePaths.size() > 0) {
 			System.out.println("Total no. of image files found: " + imageFilePaths.size());
 			
+			/*
 			imageFilePaths.forEach(p -> {
-				System.out.println("\t"+p.getFileName());
+				System.out.println(p.getFileName());
 			});
+			*/
 		} else {
 			System.out.println("No image file found in the directory: " + imageFilePaths.size());
 		}
@@ -247,7 +273,6 @@ class PhotoGrid {
 	 */
 
 	/* 
-	//TODO: incorrect aspect ratio
 	 public BufferedImage cropAndResizeImage(int dstWidth, int dstHeight) {
 		// The size of one photo grid is PhotoCollages.minWdithAndHeight.  
 		// The actual image size of one photo grid is:
@@ -383,26 +408,31 @@ class PhotoGrid {
 
 class PositionAndDimension {
 	public int posX, posY, width, height;
-
+	public int minWdithAndHeight, gridSize, borderSize, marginBorderSize;
 	//mapIndexI, mapIndexJ, blockSize, minWdithAndHeight
 
 	public PositionAndDimension(int inIndexI,
 								int inIndexJ,
 								int inHorizontalGap,
 								int inVerticalGap,
-								int inMinWdithAndHeight,
 								int inBlockSize) {
-		posX = inIndexJ *  (inMinWdithAndHeight + inHorizontalGap);
-		posY = inIndexI *  (inMinWdithAndHeight + inVerticalGap);
-		width = inBlockSize*inMinWdithAndHeight + inHorizontalGap*(inBlockSize-1);
-		height = inBlockSize*inMinWdithAndHeight + inVerticalGap*(inBlockSize-1);
+		
+		borderSize = PhotoCollages.borderSize;
+		marginBorderSize = PhotoCollages.marginBorderSize;
+		gridSize = PhotoCollages.gridSize;
+		minWdithAndHeight = PhotoCollages.minWdithAndHeight;
+
+		posX = marginBorderSize + inIndexJ * (gridSize + inHorizontalGap) + borderSize;
+		posY = marginBorderSize + inIndexI * (gridSize + inVerticalGap) + borderSize;
+		width = inBlockSize*gridSize+(inBlockSize-1)*inHorizontalGap-2*borderSize;
+		height = inBlockSize*gridSize+(inBlockSize-1)*inVerticalGap-2*borderSize;
 	}
 }
 
 class GridMap {
 	public ArrayList<PositionAndDimension> posAndDim = new ArrayList<PositionAndDimension>();
-	int width, height, minWdithAndHeight, borderSize;
-	public int[] gridPosXArray, gridPosYArray;
+	int width, height, minWdithAndHeight, gridSize, borderSize, marginBorderSize;
+	//public int[] gridPosXArray, gridPosYArray;
 	// all grids are square, 1x1, 2x2, 3x3, etc
 	public int largestGridSize;
 	public int photoNumPerRow, horizontalGap, photoNumPerColumn, verticalGap;
@@ -413,8 +443,10 @@ class GridMap {
 	public GridMap(int inWidth, int inHeight) {
 		width = inWidth;
 		height = inHeight;
+		gridSize = PhotoCollages.gridSize;
 		minWdithAndHeight = PhotoCollages.minWdithAndHeight;
 		borderSize = PhotoCollages.borderSize;
+		marginBorderSize = PhotoCollages.marginBorderSize;
 	}
 
 	public void generateLayout() {
@@ -493,7 +525,7 @@ class GridMap {
 		posAndDim.add(new PositionAndDimension(
 			mapIndexI, mapIndexJ, 
 			horizontalGap, verticalGap,
-			minWdithAndHeight, blockSize
+			blockSize
 		));
 	}
 
@@ -519,33 +551,37 @@ class GridMap {
 	public void calculateGridPosXAndPosY() {
 		System.out.println("====================================================================");
 		
-		int usableWidth = width-(PhotoCollages.marginBorderSize*2);
-		photoNumPerRow = usableWidth/minWdithAndHeight;
-		int sumofHorizontalGap = usableWidth%minWdithAndHeight;
+		int usableWidth = width-(marginBorderSize*2);
+		photoNumPerRow = usableWidth/gridSize;
+		int sumofHorizontalGap = usableWidth%gridSize;
 		horizontalGap = sumofHorizontalGap / (photoNumPerRow - 1);
 		
+		/*
 		gridPosXArray = new int[photoNumPerRow];
 		
 		for(int i = 0; i < photoNumPerRow; i++) {
-			gridPosXArray[i] = PhotoCollages.marginBorderSize + (i * (minWdithAndHeight+horizontalGap));
+			gridPosXArray[i] = marginBorderSize + (i * (gridSize+horizontalGap));
 		}
-		
+		*/
+
 		System.out.println("usableWidth: " + usableWidth);
 		System.out.println("photoNumPerRow: " + photoNumPerRow);
 		System.out.println("sumofHorizontalGap: " + sumofHorizontalGap);
 		System.out.println("Horizontal gap is " + horizontalGap);
 		
-		int usableHeight = height-(PhotoCollages.marginBorderSize*2);
-		photoNumPerColumn = usableHeight/minWdithAndHeight;
-		int sumofVerticalGap = usableHeight%minWdithAndHeight;
+		int usableHeight = height-(marginBorderSize*2);
+		photoNumPerColumn = usableHeight/gridSize;
+		int sumofVerticalGap = usableHeight%gridSize;
 		verticalGap = sumofVerticalGap / (photoNumPerColumn - 1);
 		
+		/* 
 		gridPosYArray = new int[photoNumPerColumn];
 		
 		for(int j = 0; j < photoNumPerColumn; j++) {
-			gridPosYArray[j] = PhotoCollages.marginBorderSize + (j * (minWdithAndHeight+verticalGap));
+			gridPosYArray[j] = marginBorderSize + (j * (gridSize+verticalGap));
 		}
-		
+		*/
+
 		System.out.println("usableHeight: " + usableHeight);
 		System.out.println("photoNumPerColumn: " + photoNumPerColumn);
 		System.out.println("sumofVerticalGap: " + sumofVerticalGap);
@@ -603,15 +639,16 @@ class Wallpaper {
 		g2d = outputImage.createGraphics();
 		g2d.setPaint(new Color (255, 255, 255));
 
-		System.out.println("Draw ["+(borderSize+posAndDim.posX)+", "+(borderSize+posAndDim.posY)+"] with width of "+posAndDim.width + ", " + posAndDim.height);
+		System.out.println("Draw ["+(posAndDim.posX)+", "+(posAndDim.posY)+"] with width of "+posAndDim.width + ", " + posAndDim.height);
 
-		g2d.fillRect(borderSize+posAndDim.posX, borderSize+posAndDim.posY, posAndDim.width, posAndDim.height);
+		g2d.fillRect(posAndDim.posX, posAndDim.posY, posAndDim.width, posAndDim.height);
 		g2d.dispose();
 	}
 	
 	public void drawPhoto(PositionAndDimension posAndDim, BufferedImage bi) {
 		g = outputImage.getGraphics();
-		g.drawImage(bi, posAndDim.posX+PhotoCollages.marginBorderSize, posAndDim.posY+PhotoCollages.marginBorderSize, null);
+		g.drawImage(bi, posAndDim.posX, posAndDim.posY, null);
+		//g.drawImage(bi, posAndDim.posX+PhotoCollages.marginBorderSize, posAndDim.posY+PhotoCollages.marginBorderSize, null);
 		g.dispose();
 	}
 	
